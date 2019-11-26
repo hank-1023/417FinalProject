@@ -90,3 +90,6 @@ class announcer(threading.Thread):
                     self.announce(self.announced[i])
                     self.current[i] = curr_time
             if i == 0: return
+
+    def test2(selfself):
+        return
