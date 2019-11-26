@@ -95,13 +95,7 @@ class announcer(threading.Thread):
         return
 
     def test(self):
-        return 2
+        return
 
-    def test3(self):
-        return 3
-
-    def test4(self):
-        return 4
-
-    def test5(self):
-        return 5
+    def test65(self):
+        return
