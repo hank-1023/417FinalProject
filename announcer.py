@@ -94,3 +94,11 @@ class announcer(threading.Thread):
     def test2(selfself):
         i = 0;
         return
+
+    def test3(self):
+        i = 0
+        return
+
+    def text4(self):
+        return
+
