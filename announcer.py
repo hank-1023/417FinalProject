@@ -89,13 +89,3 @@ class announcer(threading.Thread):
                 if self.current[i] + self.t_interval[i] < curr_time:
                     self.announce(self.announced[i])
                     self.current[i] = curr_time
-            if i == 0: return
-
-    def test2(selfself):
-        return
-
-    def test(self):
-        return
-
-    def test65(self):
-        return
