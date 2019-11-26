@@ -2,7 +2,6 @@ import urllib
 import urllib3
 import threading
 import time
-import piece_manager
 import bencode
 import requests
 
