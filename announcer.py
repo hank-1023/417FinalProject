@@ -92,4 +92,5 @@ class announcer(threading.Thread):
             if i == 0: return
 
     def test2(selfself):
+        i = 0;
         return
