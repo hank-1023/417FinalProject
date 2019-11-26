@@ -99,3 +99,6 @@ class announcer(threading.Thread):
 
     def test5(self):
         return 3
+
+    def testtest(self):
+        return 500
