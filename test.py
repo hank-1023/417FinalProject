@@ -9,7 +9,7 @@ print(torr.announce())
 print(torr.total_size())
 print(torr.piece_length())
 print(torr.pieces())
-
+print()
 
 bencode.bdecode('i12e')
 
