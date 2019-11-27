@@ -26,10 +26,10 @@ class announcer(threading.Thread):
     finished = 0
 
 
-    def __init__(self, peer_id, info_hash, upload, download, left, url, port):
+    def __init__(self, torrent):
         threading.Thread.__init__(self)
         self.peer_id = urllib.quote(peer_id)
-        self.info_hash = urllib.quote(info_hash)
+        self.info_hash = torrent.info_hash
         self.upload = upload
         self.download = download
         self.left = left
