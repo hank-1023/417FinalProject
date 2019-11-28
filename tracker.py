@@ -1,6 +1,5 @@
 import random
 from torrent import *
-import requests
 import aiohttp
 import asyncio
 from urllib.parse import urlencode
