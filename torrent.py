@@ -1,0 +1,49 @@
+import torrent_parser as tp
+from hashlib import sha1
+
+
+class DownloadFileInfo:
+    def __init__(self, filename, length, path=None):
+        self.filename = filename
+        self.length = length
+        # For multi-file
+        self.path = path
+
+
+class Torrent:
+    def __init__(self, torrent_file):
+        self.meta = tp.parse_torrent_file(torrent_file)
+        self.multi_file = 'files' in self.meta['info']
+        self.files = []
+        self.base_url = None
+        self.info_hash = None
+        self.total_length = 0
+
+        # add more fields while parsing the dictionary
+        self.parse_meta(self.meta)
+
+    def parse_meta(self, meta):
+        self.base_url = meta['announce']
+        encoded_info = tp.encode(meta['info'])
+        self.info_hash = sha1(encoded_info).digest()
+        # populates self.files array
+        self.add_files(meta['info'])
+
+    def add_files(self, info_dict):
+        if self.multi_file:
+            for item in info_dict['files']:
+                f = DownloadFileInfo(None, item['length'], item['path'])
+                self.files.append(f)
+                self.total_length += item['length']
+        else:
+            f = DownloadFileInfo(info_dict['name'], info_dict['length'])
+            self.files.append(f)
+            self.total_length = info_dict['length']
+
+
+if __name__ == '__main__':
+    # t = Torrent('torrents/1056.txt.utf-8.torrent')
+    t = Torrent('torrents/shared.torrent')
+
+    print(t.total_length)
+
