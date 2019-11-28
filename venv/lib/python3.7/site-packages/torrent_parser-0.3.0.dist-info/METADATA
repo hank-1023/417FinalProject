@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: torrent-parser
+Version: 0.3.0
+Summary: A .torrent file parser and creator for both Python 2 and 3
+Home-page: https://github.com/7sDream/torrent_parser
+Author: 7sDream
+Author-email: 7seconddream@gmail.com
+License: MIT
+Keywords: file,torrent,JSON,parser
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Topic :: Multimedia
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Utilities
+
+UNKNOWN
+
+
