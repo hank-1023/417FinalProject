@@ -41,8 +41,9 @@ class Tracker:
             peers = [peers[i:i + 6] for i in range(0, len(peers), 6)]
 
             peers_queue = Queue()
-            for p in peers:
-                await peers_queue.put((socket.inet_ntoa(p[:4]), _decode_port(p[4:])))
+            await peers_queue.put((socket.inet_ntoa(peers[0][:4]), _decode_port(peers[0][4:])))
+            # for p in peers:
+            #     await peers_queue.put((socket.inet_ntoa(p[:4]), _decode_port(p[4:])))
 
             pc = PeerConnection(peers_queue, self.torrent.info_hash, peer_id.encode('utf-8'))
             await pc.start()
@@ -68,6 +69,6 @@ def _decode_port(port):
 
 
 if __name__ == '__main__':
-    t = Tracker('torrents/1056.txt.utf-8.torrent')
+    t = Tracker('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
     loop = asyncio.get_event_loop()
     loop.run_until_complete(t.connect())
