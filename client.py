@@ -18,4 +18,9 @@ class TorrentClient:
         self.peers = []
         self.available_peers = Queue()
 
+    def start(self):
+
+        response = self.tracker.connect()
+
+
 

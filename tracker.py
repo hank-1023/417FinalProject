@@ -10,13 +10,20 @@ import asyncio
 from urllib.parse import urlencode
 
 
+class TrackerResponse:
+
+    def __init__(self):
+        self.peers = []
+        self.complete = 0
+        self.incomplete = 0
+        self.interval = 0
+
+
 class Tracker:
     def __init__(self, torrent_file):
         self.torrent = Torrent(torrent_file)
-
-    async def connect(self):
         peer_id = '-PC0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
-        params = {
+        self.params = {
             'info_hash': self.torrent.info_hash,
             'peer_id': peer_id,
             'uploaded': 0,
@@ -27,28 +34,19 @@ class Tracker:
             'compact': 1
         }
 
-        full_url = self.torrent.base_url + '?' + urlencode(params)
+    async def connect(self) -> TrackerResponse:
+        full_url = self.torrent.base_url + '?' + urlencode(self.params)
         client_session = aiohttp.ClientSession()
 
-        async with client_session.get(full_url) as response:
-            if not response.status == 200:
-                raise ConnectionError('Unable to connect to tracker: status code {}'.format(response.status))
-            data = await response.read()
+        async with client_session.get(full_url) as raw_response:
+            if not raw_response.status == 200:
+                raise ConnectionError('Unable to connect to tracker: status code {}'.format(raw_response.status))
+            data = await raw_response.read()
             self.check_response_error(data)
 
-            decoded = bencoding.Decoder(data).decode()
-            peers = decoded[b'peers']
-            peers = [peers[i:i + 6] for i in range(0, len(peers), 6)]
-
-            peers_queue = Queue()
-            await peers_queue.put((socket.inet_ntoa(peers[0][:4]), _decode_port(peers[0][4:])))
-            # for p in peers:
-            #     await peers_queue.put((socket.inet_ntoa(p[:4]), _decode_port(p[4:])))
-
-            pc = PeerConnection(peers_queue, self.torrent.info_hash, peer_id.encode('utf-8'))
-            await pc.start()
-
         await client_session.close()
+
+        return self.parse_response(data)
 
     @staticmethod
     def check_response_error(response):
@@ -59,16 +57,34 @@ class Tracker:
         except UnicodeDecodeError:
             pass
 
+    @staticmethod
+    def parse_response(response) -> TrackerResponse:
+        result = TrackerResponse()
 
-def _decode_port(port):
-    """
-    Converts a 32-bit packed binary port number to int
-    """
-    # Convert from C style big-endian encoded as unsigned short
-    return struct.unpack(">H", port)[0]
+        decoded = bencoding.Decoder(response).decode()
+
+        peers = decoded[b'peers']
+        peers = [peers[i:i + 6] for i in range(0, len(peers), 6)]
+        for p in peers:
+            decoded_port = struct.unpack(">H", p[4:])[0]
+            result.peers.append((socket.inet_ntoa(p[:4]), decoded_port))
+
+        result.complete = decoded.get(b'complete', 0)
+        result.incomplete = decoded.get(b'incomplete', 0)
+        result.interval = decoded.get(b'interval', 0)
+
+        return result
 
 
 if __name__ == '__main__':
     t = Tracker('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(t.connect())
+    response = loop.run_until_complete(t.connect())
+
+    q = Queue()
+    # Putting one address for testing
+    print(response.peers[0])
+    q.put_nowait(response.peers[0])
+
+    pc = PeerConnection(q, t.params['info_hash'], t.params['peer_id'].encode('utf-8'))
+    loop.run_until_complete(pc.start())
