@@ -49,19 +49,19 @@ class Tracker:
         return self.parse_response(data)
 
     @staticmethod
-    def check_response_error(response):
+    def check_response_error(raw_response):
         try:
-            message = response.decode("utf-8")
+            message = raw_response.decode("utf-8")
             if "failure" in message:
                 raise ConnectionError('Unable to connect to tracker: {}'.format(message))
         except UnicodeDecodeError:
             pass
 
     @staticmethod
-    def parse_response(response) -> TrackerResponse:
+    def parse_response(raw_response) -> TrackerResponse:
         result = TrackerResponse()
 
-        decoded = bencoding.Decoder(response).decode()
+        decoded = bencoding.Decoder(raw_response).decode()
 
         peers = decoded[b'peers']
         peers = [peers[i:i + 6] for i in range(0, len(peers), 6)]
@@ -77,14 +77,14 @@ class Tracker:
 
 
 if __name__ == '__main__':
-    t = Tracker('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
+    t = Tracker('torrents/1056.txt.utf-8.torrent')
     loop = asyncio.get_event_loop()
     response = loop.run_until_complete(t.connect())
 
     q = Queue()
     # Putting one address for testing
-    print(response.peers[0])
-    q.put_nowait(response.peers[0])
+    print(response.peers[-1])
+    q.put_nowait(response.peers[-1])
 
     pc = PeerConnection(q, t.params['info_hash'], t.params['peer_id'].encode('utf-8'))
     loop.run_until_complete(pc.start())
