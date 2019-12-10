@@ -25,62 +25,66 @@ class PeerConnection:
         logging.info('Got assigned peer with: {ip}'.format(ip=ip))
 
         self.reader, self.writer = await asyncio.open_connection(ip, port)
-        buffer = await self.initiate_handshake()
+        handshake_data = await self.initiate_handshake()
+
         self.my_state.append("choked")
         await self.send_interested()
         self.peer_state.append("interested")
-        set = 1;
-        while set:
+
+        stopped = 1
+        while stopped:
             recv = await self.reader.read(10240)
             print(recv)
             try:
                 message_length = struct.unpack('>I', recv[:4])[0]
-            except: print("not the BitField we want")
-            if message_length == 0:
-                #alive
-                pass
-            if message_length > 0:
-                message_id = struct.unpack('>b', recv[4:5])[0]
-                if message_id == 0:
-                    #chock
-                    self.my_state.append("choked")
-                elif message_id == 1:
-                    #unchock
-                    if 'choked' in self.my_state:
-                        self.my_state.remove('choked')
-                elif message_id == 2:
-                    #interested
-                    self.peer_state.append("interested")
-                elif message_id == 3:
-                    #not interested
-                    if 'interested' in self.peer_state:
-                        self.peer_state.remove('interested')
-                elif message_id == 4:
-                    #have
+                if message_length == 0:
+                    # alive
                     pass
-                elif message_id == 5:
-                    #bitfield
-                    pass
-                elif message_id == 6:
-                    #request
-                    pass
-                elif message_id == 7:
-                    a = len(recv)
-                    b = recv[a+100]
-                    parts = struct.unpack('>IbII' + str(message_length - 9) + 's', recv[a+100])
-                    print(parts)
-                    pass
-                elif message_id == 8:
-                    #cancel
-                    pass
-                elif message_id == 9:
-                    #port
-                    pass
-                if 'choked' not in self.my_state:
-                    if 'interested' in self.peer_state:
-                        if 'pending_request' not in self.my_state:
-                            self.my_state.append('pending_request')
-                            await self.send_request()
+                if message_length > 0:
+                    message_id = struct.unpack('>b', recv[4:5])[0]
+                    if message_id == 0:
+                        # chock
+                        self.my_state.append("choked")
+                    elif message_id == 1:
+                        # unchock
+                        if 'choked' in self.my_state:
+                            self.my_state.remove('choked')
+                    elif message_id == 2:
+                        # interested
+                        self.peer_state.append("interested")
+                    elif message_id == 3:
+                        # not interested
+                        if 'interested' in self.peer_state:
+                            self.peer_state.remove('interested')
+                    elif message_id == 4:
+                        # have
+                        pass
+                    elif message_id == 5:
+                        # bitfield
+                        pass
+                    elif message_id == 6:
+                        # request
+                        pass
+                    elif message_id == 7:
+                        a = len(recv)
+                        b = recv[a + 100]
+                        parts = struct.unpack('>IbII' + str(message_length - 9) + 's', b)
+                        print(parts)
+                        pass
+                    elif message_id == 8:
+                        # cancel
+                        pass
+                    elif message_id == 9:
+                        # port
+                        pass
+                    if 'choked' not in self.my_state:
+                        if 'interested' in self.peer_state:
+                            if 'pending_request' not in self.my_state:
+                                self.my_state.append('pending_request')
+                                await self.send_request()
+            except Exception as e:
+                logging.exception('An error occurred')
+                raise e
 
     async def initiate_handshake(self):
         packed_bytes = struct.pack(
@@ -119,62 +123,37 @@ class PeerConnection:
 
     async def send_interested(self):
         message = struct.pack('>Ib',
-                           1,  # Message length
-                           2   # interested id
-                    )
+                              1,  # Message length
+                              2  # interested id
+                              )
         self.writer.write(message)
         await self.writer.drain()
 
     async def send_request(self):
         message = struct.pack('>IbIII',
-                           13,
-                           6,
-                           0,
-                           0,
-                           2**14)
+                              13,
+                              6,
+                              0,
+                              0,
+                              2 ** 14)
         self.writer.write(message)
         await self.writer.drain()
 
-# class HandShake:
-#     length = 68
-#
-#     def __init__(self, info_hash: bytes, peer_id: bytes):
-#         self.info_hash = info_hash
-#         self.peer_id = peer_id
-#
-#     def to_bytes(self):
-#         struct.pack(
-#             '>B19s8x20s20s',  # >: Big Endian, B: single byte, 19s: 19 bytes string,
-#             # 8x: padded 8 bytes, 20s: 20 bytes string
-#             19,
-#             b'BitTorrent protocol',
-#             self.info_hash,
-#             self.peer_id)
-#
-#     @classmethod
-#     def to_handshake(cls, data: bytes):
-#         logging.debug('Decoding Handshake of length: {length}'.format(length=len(data)))
-#         if len(data) != 68:
-#             logging.debug('Handshake message length != 68, cannot decode')
-#             return None
-#         s = struct.unpack('>B19s8x20s20s', data)
-#         return cls(info_hash=s[2], peer_id=s[3])
 
 class ProtocolError(BaseException):
     pass
 
-class Blocks:
 
+class Blocks:
     block = []
 
     def __init__(self, total_size):
         inner_size = total_size
         index = 0
-        while inner_size > 2**14:
+        while inner_size > 2 ** 14:
             index += 1
-            inner_size -= 2**14
+            inner_size -= 2 ** 14
         index += 1
 
     def save(self, ):
         self.block.append(self)
-
