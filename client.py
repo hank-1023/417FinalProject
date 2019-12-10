@@ -9,7 +9,7 @@ from hashlib import sha1
 from tracker import *
 import struct
 
-
+REQUEST_LENGTH = 2**14
 
 class TorrentClient:
 
