@@ -1,3 +1,4 @@
+import logging
 from _sha1 import sha1
 
 

@@ -1,6 +1,5 @@
-import asyncio
 import logging
-import struct
+
 from tracker import *
 
 from asyncio import Queue

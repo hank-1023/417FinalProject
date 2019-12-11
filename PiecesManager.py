@@ -1,6 +1,5 @@
 import math
 import time
-from torrent import *
 from DataModel import *
 
 BLOCK = 2**14

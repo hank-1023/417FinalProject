@@ -59,9 +59,4 @@ class Torrent:
     def total_size(self) -> int:
         return self.total_length
 
-if __name__ == '__main__':
-    # t = Torrent('torrents/1056.txt.utf-8.torrent')
-    t = Torrent('torrents/shared.torrent')
-
-    print(t.total_length)
 

@@ -1,10 +1,11 @@
 import asyncio
 import logging
 import time
-from PiecesManager import *
+from asyncio import Queue, CancelledError
+import PiecesManager
 from connection_proto import *
-from tracker import Tracker
-from torrent import *
+from tracker import Tracker, Torrent
+import torrent
 
 REQUEST_LENGTH = 2 ** 14
 MAX_PEER_CONNECTIONS = 40
@@ -16,7 +17,11 @@ class TorrentClient:
         self.tracker = Tracker(torrent)
         self.pieces_manager = PiecesManager(Torrent(torrent))
         self.available_peers = Queue()
-        self.peers = [PeerConnection(self.available_peers, self.tracker.torrent.info_hash, self.tracker.peer_id, self.on_block_received) for _ in range(MAX_PEER_CONNECTIONS)]
+        self.peers = [PeerConnection(self.available_peers,
+                                     self.tracker.torrent.info_hash,
+                                     self.tracker.peer_id,
+                                     self.on_block_received)
+                      for _ in range(MAX_PEER_CONNECTIONS)]
         self.user_canceled = False
 
     async def start(self):
@@ -50,7 +55,8 @@ class TorrentClient:
 
     def on_block_received(self, peer_id, piece_index, block_offset, data):
         self.pieces_manager.event_block_received(peer_id=peer_id, piece_index=piece_index,
-            block_offset=block_offset, data=data)
+                                                 block_offset=block_offset, data=data)
+
 
 if __name__ == '__main__':
     t = Tracker('torrents/1056.txt.utf-8.torrent')
