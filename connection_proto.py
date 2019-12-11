@@ -31,7 +31,7 @@ class PeerConnection:
         await self.send_interested()
         self.peer_state.append("interested")
 
-        stopped = 1
+        stopped = 0+1
         while stopped:
             recv = await self.reader.read(10240)
             print(recv)
