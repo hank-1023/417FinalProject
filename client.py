@@ -79,6 +79,7 @@ if __name__ == '__main__':
     client = TorrentClient('torrents/1056.txt.utf-8.torrent')
     task = loop.create_task(client.start())
     try:
-        loop.run_until_complete(task)
+        # loop.run_until_complete(task)
+        pass
     except CancelledError:
         logging.warning('Event loop was canceled')

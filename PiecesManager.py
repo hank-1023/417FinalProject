@@ -9,27 +9,28 @@ class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
-        self.missing_list = self._initial_piece()
+        self.missing_list = self._initial_piece(self.torrent)
         self.sending_list = []
         self.queue = []
         self.have_pieces = []
         self.total_pieces = len(torrent.pieces)
 
-    def _initial_piece(self):
-        torrent = self.torrent
+    def _initial_piece(self, torrent):
+        self.torrent = torrent
         piece = []
-        total_pieces = len(torrent.pieces)
+        total_pieces = len(self.torrent.pieces)
+        print(len(self.torrent.meta['info']['pieces']))
         block_num = math.ceil(torrent.piece_length/BLOCK)
 
         for index, hash in enumerate(torrent.pieces):
-            if index < total_pieces:
+            if index < total_pieces - 1:
                 #all the pieces except for the last one
                 blocks = [Block(index, offset * BLOCK, BLOCK) for offset in range(block_num)]
             else:
                 #the last piece which may not be full length
                 block_num_last = math.ceil(torrent.total_size() % torrent.piece_length / BLOCK)
                 blocks = [Block(index, offset * BLOCK, BLOCK) for offset in range(block_num_last-1)]
-                last_length = torrent.piece_length - ((block_num_last-1)*BLOCK)
+                last_length = torrent.total_size() % torrent.piece_length - ((block_num_last-1)*BLOCK)
                 blocks.append(Block(index, (block_num_last-1) * BLOCK, last_length))
             piece.append(Piece(index, blocks, hash))
         return piece
