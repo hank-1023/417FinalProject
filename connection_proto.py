@@ -70,6 +70,12 @@ class PeerConnection:
                         b = recv[a + 100]
                         parts = struct.unpack('>IbII' + str(message_length - 9) + 's', b)
                         print(parts)
+                        self.my_state.remove('pending_request')
+                        self.on_block_cb(
+                            peer_id=self.remote_id,
+                            piece_index=message.index,
+                            block_offset=message.begin,
+                            data=cls(parts[2]))
                         pass
                     elif message_id == 8:
                         # cancel
