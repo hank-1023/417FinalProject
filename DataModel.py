@@ -25,6 +25,10 @@ class Piece:
             if b.status != Block.Completed:
                 return False
 
+    def reset(self):
+        for b in self.blocks:
+            b.status = Block.Missing
+
     def get_next_block(self):
         for b in self.blocks:
             if b.status == Block.Missing:

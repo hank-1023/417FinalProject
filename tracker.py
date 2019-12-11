@@ -49,6 +49,7 @@ class Tracker:
             self.check_response_error(data)
 
         await client_session.close()
+        k = data
 
         return self.parse_response(data)
 
