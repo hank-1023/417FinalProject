@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import time
-from asyncio import Queue, CancelledError
 from PiecesManager import *
 from connection_proto import *
 from tracker import Tracker
