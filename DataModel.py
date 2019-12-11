@@ -42,3 +42,26 @@ class Piece:
     def is_hash_matching(self):
         piece_hash = sha1(self.concat_blocks()).digest()
         return self.hash == piece_hash
+
+    def next(self):
+        for block in self.blocks:
+            if block.status == Block.Missing:
+                block.status = Block.Downloading;
+                return block
+        return None
+
+    def received(self, offset: int, data: bytes):
+        exist = 0;
+        for block in self.blocks:
+            if block.offset == offset:
+                block.status = Block.Completed
+                block.data = data
+                exist = 1
+        if exist == 0:
+            logging.warning('Trying to complete a non-existing block {offset}'
+                           .format(offset=offset))
+
+
+
+
+

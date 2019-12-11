@@ -40,6 +40,18 @@ class Torrent:
             self.files.append(f)
             self.total_length = info_dict['length']
 
+    def pieces(self):
+        piecesha = self.meta_info[b'info'][b'pieces']
+        pieces = []
+        offset = 0
+
+        while offset < len(piecesha):
+            pieces.append(piecesha[offset:offset + 20])
+            offset += 20
+        return pieces
+
+    def piece_length(self):
+        return self.meta_info[b'info'][b'pieces length']
 
 if __name__ == '__main__':
     # t = Torrent('torrents/1056.txt.utf-8.torrent')

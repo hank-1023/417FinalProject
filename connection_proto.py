@@ -144,16 +144,3 @@ class ProtocolError(BaseException):
     pass
 
 
-class Blocks:
-    block = []
-
-    def __init__(self, total_size):
-        inner_size = total_size
-        index = 0
-        while inner_size > 2 ** 14:
-            index += 1
-            inner_size -= 2 ** 14
-        index += 1
-
-    def save(self, ):
-        self.block.append(self)
