@@ -58,8 +58,7 @@ class Torrent:
 
 if __name__ == '__main__':
     torrent = Torrent('torrents/1056.txt.utf-8.torrent')
-    print(torrent.meta['info']['piece length'])
-    print(len(torrent.meta['info']['pieces']))
+    print(torrent.pieces)
 
 
 

@@ -1,42 +1,47 @@
 import math
 import time
 from DataModel import *
-
-BLOCK = 2**14
+from client import REQUEST_LENGTH
 
 
 class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
-        self.missing_list = self._initial_piece(self.torrent)
-        self.sending_list = []
+        self.missing_list = self.initiate_blocks()
+        # self.sending_list = []
         self.queue = []
         self.have_pieces = []
-        self.total_pieces = len(torrent.pieces)
+        self.total_pieces_num = len(torrent.pieces)
 
-    def _initial_piece(self, torrent):
-        self.torrent = torrent
-        piece = []
-        total_pieces = len(self.torrent.pieces)
-        print(len(self.torrent.meta['info']['pieces']))
-        block_num = math.ceil(torrent.piece_length/BLOCK)
-
-        for index, hash in enumerate(torrent.pieces):
-            if index < total_pieces - 1:
-                #all the pieces except for the last one
-                blocks = [Block(index, offset * BLOCK, BLOCK) for offset in range(block_num)]
+    def initiate_blocks(self):
+        pieces = []
+        for index, piece_hash in enumerate(self.torrent.pieces):
+            if index != self.total_pieces_num - 1:
+                blocks = []
+                # No. of blocks for each piece except for the last one
+                block_num = math.ceil(self.torrent.piece_length / REQUEST_LENGTH)
+                for offset in range(block_num):
+                    blocks.append(Block(index, offset * REQUEST_LENGTH, REQUEST_LENGTH))
             else:
-                #the last piece which may not be full length
-                block_num_last = math.ceil(torrent.total_size() % torrent.piece_length / BLOCK)
-                blocks = [Block(index, offset * BLOCK, BLOCK) for offset in range(block_num_last-1)]
-                last_length = torrent.total_size() % torrent.piece_length - ((block_num_last-1)*BLOCK)
-                blocks.append(Block(index, (block_num_last-1) * BLOCK, last_length))
-            piece.append(Piece(index, blocks, hash))
-        return piece
+                # For last piece
+                blocks = []
+                last_piece_length = self.torrent.total_length % self.torrent.piece_length
+                block_num = math.ceil(last_piece_length / REQUEST_LENGTH)
+                for offset in range(block_num):
+                    blocks.append(Block(index, offset * REQUEST_LENGTH, REQUEST_LENGTH))
+
+                # If the last block in last piece is smaller, change the length of last block
+                if last_piece_length % REQUEST_LENGTH > 0:
+                    last = blocks[-1]
+                    last.length = last_piece_length % REQUEST_LENGTH
+                    blocks[-1] = last
+            pieces.append(Piece(index, blocks, piece_hash))
+
+        return pieces
 
     def completed(self):
-        return len(self.have_pieces) == self.total_pieces
+        return len(self.have_pieces) == self.total_pieces_num
 
     @staticmethod
     def bytes_uploaded():
@@ -59,7 +64,7 @@ class PiecesManager:
                     if piece.is_hash_matching():
                         self.queue.remove(piece)
                         self.have_pieces.append(piece)
-                        downloaded = self.total_pieces - len(self.missing_list) - len(self.queue)
+                        downloaded = self.total_pieces_num - len(self.missing_list) - len(self.queue)
                     else:
                         print("wrong piece")
                         piece.reset()

@@ -1,26 +1,31 @@
+import asyncio
 import logging
-
 from tracker import *
-
 from asyncio import Queue
+
+CHUNK_SIZE = 10240
 
 
 class PeerConnection:
-    def __init__(self, queue: Queue, info_hash,
+    def __init__(self, ip: str, port: int, info_hash,
                  peer_id, block_callback=None):
+        self.ip = ip
+        self.port = port
         self.my_state = []
         self.peer_state = []
-        self.queue = queue
+        # self.queue = queue
         self.info_hash = info_hash
         self.peer_id = peer_id
         self.remote_id = None
         self.writer = None
         self.reader = None
         self.on_block_cb = block_callback
-        self.future = asyncio.ensure_future(self.start())
+        # self.future = asyncio.ensure_future(self.start())
+
+        self.stop_connection = False
 
     async def start(self):
-        ip, port = await self.queue.get()
+        ip, port = self.ip, self.port
         logging.info('Got assigned peer with: {ip}'.format(ip=ip))
 
         self.reader, self.writer = await asyncio.open_connection(ip, port)
@@ -30,12 +35,13 @@ class PeerConnection:
         await self.send_interested()
         self.peer_state.append("interested")
 
-        stopped = 0+1
-        while stopped:
-            recv = await self.reader.read(10240)
-            print(recv)
+        while not self.stop_connection:
+            recv = await self.reader.read(CHUNK_SIZE)
+            new_buff = handshake_data + recv
+            print(new_buff)
             try:
                 message_length = struct.unpack('>I', recv[:4])[0]
+                # Choke
                 if message_length == 0:
                     # alive
                     pass
@@ -82,6 +88,9 @@ class PeerConnection:
             except Exception as e:
                 logging.exception('An error occurred')
                 raise e
+
+    def parse_message(self, message):
+        return
 
     async def initiate_handshake(self):
         packed_bytes = struct.pack(
@@ -135,6 +144,7 @@ class PeerConnection:
                               2 ** 14)
         self.writer.write(message)
         await self.writer.drain()
+
 
 
 class ProtocolError(BaseException):

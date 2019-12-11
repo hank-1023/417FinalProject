@@ -54,32 +54,24 @@ class TorrentClient:
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def on_block_received(self):
-        # self.pieces_manager.event_block_received()
-        pass
+    def on_block_received(self, peer_id, piece_index, block_offset, data):
+        self.pieces_manager.event_block_received(peer_id, piece_index, block_offset, data)
 
 
-if __name__ == '__main__':
-    t = Tracker('torrents/1056.txt.utf-8.torrent')
-    print(Torrent('torrents/1056.txt.utf-8.torrent').total_length)
-    print(Torrent('torrents/1056.txt.utf-8.torrent').piece_length)
-    with open('torrents/deb-10.1.0-amd64-netinst.iso.torrent', 'rb') as f:
-        meta_info = f.read()
-    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
-    torrent.info()
-    print(torrent)
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(t.connect(0, 0, None))
-
-    q = Queue()
-    # Putting one address for testing
-    print(response.peers[-1])
-    q.put_nowait(response.peers[-1])
-
-    client = TorrentClient('torrents/1056.txt.utf-8.torrent')
-    task = loop.create_task(client.start())
-    try:
-        # loop.run_until_complete(task)
-        pass
-    except CancelledError:
-        logging.warning('Event loop was canceled')
+# if __name__ == '__main__':
+#     t = Tracker('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
+#     loop = asyncio.get_event_loop()
+#     response = loop.run_until_complete(t.connect(0, 0, True))
+#
+#     q = Queue()
+#     # Putting one address for testing
+#     print(response.peers[-1])
+#     q.put_nowait(response.peers[-1])
+#
+#     client = TorrentClient('torrents/1056.txt.utf-8.torrent')
+#     task = loop.create_task(client.start())
+#     try:
+#         # loop.run_until_complete(task)
+#         pass
+#     except CancelledError:
+#         logging.warning('Event loop was canceled')
