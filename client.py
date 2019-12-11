@@ -2,10 +2,11 @@ import asyncio
 import logging
 import time
 from asyncio import Queue, CancelledError
-import PiecesManager
+from PiecesManager import *
+from bencoding import Decoder
 from connection_proto import *
-from tracker import Tracker, Torrent
-import torrent
+from tracker import Tracker
+from torrent import Torrent
 
 REQUEST_LENGTH = 2 ** 14
 MAX_PEER_CONNECTIONS = 40
@@ -13,9 +14,9 @@ MAX_PEER_CONNECTIONS = 40
 
 class TorrentClient:
 
-    def __init__(self, torrent):
-        self.tracker = Tracker(torrent)
-        self.pieces_manager = PiecesManager(Torrent(torrent))
+    def __init__(self, parse_torrent):
+        self.tracker = Tracker(parse_torrent)
+        self.pieces_manager = PiecesManager(Torrent(parse_torrent))
         self.available_peers = Queue()
         self.peers = [PeerConnection(self.available_peers,
                                      self.tracker.torrent.info_hash,
@@ -38,32 +39,37 @@ class TorrentClient:
             current_time = time.time()
 
             if not previous_time or previous_time - current_time < interval:
-                response = await self.tracker.connect(self.pieces_manager.bytes_uploaded(),
-                                                      self.pieces_manager.bytes_downloaded(),
-                                                      previous_time is None)
+                tracker_response = await self.tracker.connect(self.pieces_manager.bytes_uploaded(),
+                                                              self.pieces_manager.bytes_downloaded(),
+                                                              previous_time is None)
 
-                if response:
+                if tracker_response:
                     previous_time = current_time
-                    interval = response.interval
+                    interval = tracker_response.interval
                     self._empty_queue()
-                    for p in response.peers:
+                    for p in tracker_response.peers:
                         self.available_peers.put_nowait(p)
 
     def _empty_queue(self):
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def on_block_received(self, peer_id, piece_index, block_offset, data):
-        self.pieces_manager.event_block_received(peer_id=peer_id, piece_index=piece_index,
-                                                 block_offset=block_offset, data=data)
+    def on_block_received(self):
+        # self.pieces_manager.event_block_received()
+        pass
 
 
 if __name__ == '__main__':
     t = Tracker('torrents/1056.txt.utf-8.torrent')
     print(Torrent('torrents/1056.txt.utf-8.torrent').total_length)
     print(Torrent('torrents/1056.txt.utf-8.torrent').piece_length)
+    with open('torrents/deb-10.1.0-amd64-netinst.iso.torrent', 'rb') as f:
+        meta_info = f.read()
+    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
+    torrent.info()
+    print(torrent)
     loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(t.connect(0,0,None))
+    response = loop.run_until_complete(t.connect(0, 0, None))
 
     q = Queue()
     # Putting one address for testing

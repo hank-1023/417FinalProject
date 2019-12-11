@@ -83,7 +83,7 @@ class Tracker:
 
 # if __name__ == '__main__':
 #     t = Tracker('torrents/1056.txt.utf-8.torrent')
-#     loop = asyncio.get_event_loop()
+#     loop = get_event_loop()
 #     response = loop.run_until_complete(t.connect())
 #
 #     q = Queue()

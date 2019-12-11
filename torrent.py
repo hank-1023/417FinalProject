@@ -42,12 +42,12 @@ class Torrent:
 
     @property
     def pieces(self):
-        piecesha = self.meta['info']['pieces']
+        piece_sha = self.meta['info']['pieces']
         pieces = []
         offset = 0
 
-        while offset < len(piecesha):
-            pieces.append(piecesha[offset:offset + 20])
+        while offset < len(piece_sha):
+            pieces.append(piece_sha[offset:offset + 20])
             offset += 20
         return pieces
 
@@ -55,8 +55,17 @@ class Torrent:
     def piece_length(self) -> int:
         return self.meta['info']['piece length']
 
-
     def total_size(self) -> int:
         return self.total_length
+
+    def info(self):
+        print(self.meta['info']['piece length'])
+
+
+if __name__ == '__main__':
+    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
+    print(torrent.meta['info']['piece length'])
+    print(torrent.meta['info']['pieces'])
+
 
 

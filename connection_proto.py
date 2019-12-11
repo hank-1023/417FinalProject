@@ -45,7 +45,6 @@ class PeerConnection:
                         # chock
                         self.my_state.append("choked")
                     elif message_id == 1:
-                        # unchock
                         if 'choked' in self.my_state:
                             self.my_state.remove('choked')
                     elif message_id == 2:
@@ -65,16 +64,9 @@ class PeerConnection:
                         # request
                         pass
                     elif message_id == 7:
-                        a = len(recv)
-                        b = recv[a + 100]
-                        parts = struct.unpack('>IbII' + str(message_length - 9) + 's', b)
+                        parts = struct.unpack('>IbII' + str(message_length - 9) + 's', recv)
                         print(parts)
                         self.my_state.remove('pending_request')
-                        self.on_block_cb(
-                            peer_id=self.remote_id,
-                            piece_index=message.index,
-                            block_offset=message.begin,
-                            data=cls(parts[2]))
                         pass
                     elif message_id == 8:
                         # cancel

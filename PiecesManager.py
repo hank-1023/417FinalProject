@@ -4,9 +4,8 @@ from DataModel import *
 
 BLOCK = 2**14
 
+
 class PiecesManager:
-
-
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
@@ -23,7 +22,7 @@ class PiecesManager:
         block_num = math.ceil(torrent.piece_length/BLOCK)
 
         for index, hash in enumerate(torrent.pieces):
-            if index < total_pieces - 1:
+            if index < total_pieces:
                 #all the pieces except for the last one
                 blocks = [Block(index, offset * BLOCK, BLOCK) for offset in range(block_num)]
             else:
@@ -38,8 +37,10 @@ class PiecesManager:
     def completed(self):
         return len(self.have_pieces) == self.total_pieces
 
-    def bytes_uploaded(self):
-        return 0
+    @staticmethod
+    def bytes_uploaded():
+        upload = 0
+        return upload == 0
 
     def bytes_downloaded(self):
         return len(self.have_pieces) * self.torrent.piece_length
@@ -58,11 +59,9 @@ class PiecesManager:
                         self.queue.remove(piece)
                         self.have_pieces.append(piece)
                         downloaded = self.total_pieces - len(self.missing_list) - len(self.queue)
-                        print(downloaded + " pieces downloaded")
                     else:
                         print("wrong piece")
                         piece.reset()
-
 
     def add_peers(self, peer_id, pieces):
         self.peers[peer_id] = pieces
