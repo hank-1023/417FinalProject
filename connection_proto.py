@@ -8,7 +8,7 @@ from asyncio import Queue
 
 class PeerConnection:
     def __init__(self, queue: Queue, info_hash,
-                 peer_id, on_block_cb=None):
+                 peer_id, block_callback=None):
         self.my_state = []
         self.peer_state = []
         self.queue = queue
@@ -17,7 +17,7 @@ class PeerConnection:
         self.remote_id = None
         self.writer = None
         self.reader = None
-        self.on_block_cb = on_block_cb
+        self.on_block_cb = block_callback
         self.future = asyncio.ensure_future(self.start())
 
     async def start(self):

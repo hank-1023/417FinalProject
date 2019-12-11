@@ -22,20 +22,24 @@ class TrackerResponse:
 class Tracker:
     def __init__(self, torrent_file):
         self.torrent = Torrent(torrent_file)
-        peer_id = '-PC0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
-        self.params = {
+        self.peer_id = '-PC0001-' + ''.join([str(random.randint(0, 9)) for _ in range(12)])
+
+    async def connect(self, uploaded: int, downloaded: int, first_connect=False) -> TrackerResponse:
+        params = {
             'info_hash': self.torrent.info_hash,
-            'peer_id': peer_id,
-            'uploaded': 0,
-            'downloaded': 0,
+            'peer_id': self.peer_id,
+            'uploaded': uploaded,
+            'downloaded': downloaded,
             'left': self.torrent.total_length,
             # port should be between 6881-6889
             'port': 6889,
             'compact': 1
         }
 
-    async def connect(self) -> TrackerResponse:
-        full_url = self.torrent.base_url + '?' + urlencode(self.params)
+        if first_connect:
+            params['event'] = 'started'
+
+        full_url = self.torrent.base_url + '?' + urlencode(params)
         client_session = aiohttp.ClientSession()
 
         async with client_session.get(full_url) as raw_response:
@@ -76,15 +80,15 @@ class Tracker:
         return result
 
 
-if __name__ == '__main__':
-    t = Tracker('torrents/1056.txt.utf-8.torrent')
-    loop = asyncio.get_event_loop()
-    response = loop.run_until_complete(t.connect())
-
-    q = Queue()
-    # Putting one address for testing
-    print(response.peers[-1])
-    q.put_nowait(response.peers[-1])
-
-    pc = PeerConnection(q, t.params['info_hash'], t.params['peer_id'].encode('utf-8'))
-    loop.run_until_complete(pc.start())
+# if __name__ == '__main__':
+#     t = Tracker('torrents/1056.txt.utf-8.torrent')
+#     loop = asyncio.get_event_loop()
+#     response = loop.run_until_complete(t.connect())
+#
+#     q = Queue()
+#     # Putting one address for testing
+#     print(response.peers[-1])
+#     q.put_nowait(response.peers[-1])
+#
+#     pc = PeerConnection(q, t.params['info_hash'], t.params['peer_id'].encode('utf-8'))
+#     loop.run_until_complete(pc.start())
