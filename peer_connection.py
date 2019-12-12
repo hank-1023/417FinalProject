@@ -25,11 +25,9 @@ class PeerState:
 class PeerConnection:
 
     def __init__(self, ip: str, port: int, info_hash,
-                 peer_id, piece_manager, block_callback=None):
+                 peer_id, piece_manager):
         self.peer = Peer(ip, port)
         self.state = PeerState()
-        # self.peer_state = []
-        # self.queue = queue
         self.info_hash = info_hash
         self.peer_id = peer_id
         self.remote_id = None
@@ -37,10 +35,6 @@ class PeerConnection:
         self.reader = None
         self.request_sent = False
         self.piece_manager = piece_manager
-        # self.on_block_cb = block_callback
-        # self.future = asyncio.ensure_future(self.start())
-
-        self.stop_connection = False
 
     async def start(self):
         ip, port = self.peer.ip, self.peer.port

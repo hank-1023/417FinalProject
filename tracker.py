@@ -77,22 +77,3 @@ class Tracker:
         result.interval = decoded.get(b'interval', 0)
 
         return result
-
-
-# if __name__ == '__main__':
-#     torrent = Torrent('torrents/1056.txt.utf-8.torrent')
-#     tracker = Tracker(torrent)
-#     loop = get_event_loop()
-#     response = loop.run_until_complete(tracker.connect(0, 0, True))
-#
-#     peers = response.peers
-#     port = 0
-#
-#     # According to Piazza, ip should be '128.8.126.63'
-#     for p in peers:
-#         if p[0] == '128.8.126.63':
-#             port = p[1]
-#             break
-#
-#     pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash, peer_id=tracker.peer_id.encode('utf-8'))
-#     loop.run_until_complete(pc.start())

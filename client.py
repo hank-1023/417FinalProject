@@ -8,7 +8,6 @@ from torrent import Torrent
 from tracker import Tracker
 
 REQUEST_LENGTH = 2 ** 14
-MAX_PEER_CONNECTIONS = 40
 
 
 class TorrentClient:
@@ -43,13 +42,6 @@ class TorrentClient:
 
         else:
             print("Tracker no response")
-
-    # def _empty_queue(self):
-    #     while not self.available_peers.empty():
-    #         self.available_peers.get_nowait()
-
-    def on_block_received(self, piece_index, block_offset, data):
-        self.pieces_manager.event_block_received(piece_index, block_offset, data)
 
 
 if __name__ == '__main__':
