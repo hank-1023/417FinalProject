@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     print(len(torrent.pieces))
     peers = response.peers
-    port = 0
+    port = 1
 
     pieces_manager = PiecesManager(torrent)
 
