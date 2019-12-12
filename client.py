@@ -1,8 +1,7 @@
 import asyncio
 import logging
-import time
-from asyncio import Queue, CancelledError
-from bencoding import Decoder
+from asyncio import CancelledError
+
 from peer_connection import PeerConnection
 from pieces_manager import *
 from torrent import Torrent
@@ -22,13 +21,6 @@ class TorrentClient:
 
     async def start(self):
         previous_time = None
-        # interval = 1800
-
-        # if self.user_canceled:
-        #     break
-        # if self.pieces_manager.is_download_completed():
-        #     print("File Download Complete")
-        #     break
 
         tracker_response = await self.tracker.connect(self.pieces_manager.bytes_uploaded(),
                                                       self.pieces_manager.bytes_downloaded(),
@@ -62,7 +54,7 @@ class TorrentClient:
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    client = TorrentClient('torrents/1056.txt.utf-8.torrent')
+    client = TorrentClient('torrents/1184-0.txt.torrent')
     task = loop.create_task(client.start())
     try:
         loop.run_until_complete(task)

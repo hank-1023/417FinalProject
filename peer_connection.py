@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import struct
+from asyncio import StreamReader
+
 import bitstring as bitstring
-from asyncio import Queue, StreamReader
 
 
 class Peer:
@@ -12,12 +13,14 @@ class Peer:
         self.state = PeerState()
         self.has_pieces = []
 
+
 class PeerState:
     def __init__(self):
         self.am_choking = True  # client is choking this peer
         self.am_interested = False  # client is interested in this peer
         self.peer_chocking = True  # peer is choking this client
-        self.peer_interested = False # peer is interested in this client
+        self.peer_interested = False  # peer is interested in this client
+
 
 class PeerConnection:
 
@@ -58,7 +61,7 @@ class PeerConnection:
 
             if message_id == 0:
                 continue
-            elif message_id == 1: # peer unchock
+            elif message_id == 1:  # peer unchock
                 self.state.peer_chocking = False
             elif message_id == 2:  # peer interested
                 self.state.peer_interested = True
@@ -90,8 +93,6 @@ class PeerConnection:
                 break
             if not self.state.peer_chocking and not self.request_sent:
                 await self.send_request()
-
-
 
     def parse_message(self, message):
         return
@@ -153,19 +154,18 @@ class PeerConnection:
         await self.writer.drain()
 
 
-
 class ProtocolError(BaseException):
     pass
 
+
 class PeerMessage:
-    def __init__(self, message_len: int, message_id: int, payload: bytes=None):
+    def __init__(self, message_len: int, message_id: int, payload: bytes = None):
         self.message_len = message_len
         self.message_id = message_id
         self.payload = payload
 
 
 class PeerDataIterator:
-
     HEADER_LENGTH = 4
 
     def __init__(self, reader: StreamReader, buffer):
@@ -180,7 +180,7 @@ class PeerDataIterator:
             try:
                 data = await self.reader.read(5)
                 message_length = struct.unpack('>I', data[0:4])[0]
-                data += await self.reader.read(message_length-1)
+                data += await self.reader.read(message_length - 1)
                 if data:
                     self.buffer += data
                     message = self.parse_buffer()
@@ -205,6 +205,3 @@ class PeerDataIterator:
                 payload = self.buffer[5: 5 + message_length - 1]
                 self.consume_buffer(message_length)
                 return PeerMessage(message_length, message_id, payload)
-
-
-

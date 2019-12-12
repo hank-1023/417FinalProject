@@ -1,12 +1,11 @@
 import random
 import socket
-import struct
-from asyncio import get_event_loop
-import bencoding
-import aiohttp
 from urllib.parse import urlencode
+
+import aiohttp
+
+import bencoding
 from peer_connection import *
-from torrent import Torrent
 
 
 class TrackerResponse:
@@ -80,20 +79,20 @@ class Tracker:
         return result
 
 
-if __name__ == '__main__':
-    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
-    tracker = Tracker(torrent)
-    loop = get_event_loop()
-    response = loop.run_until_complete(tracker.connect(0, 0, True))
-
-    peers = response.peers
-    port = 0
-
-    # According to Piazza, ip should be '128.8.126.63'
-    for p in peers:
-        if p[0] == '128.8.126.63':
-            port = p[1]
-            break
-
-    pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash, peer_id=tracker.peer_id.encode('utf-8'))
-    loop.run_until_complete(pc.start())
+# if __name__ == '__main__':
+#     torrent = Torrent('torrents/1056.txt.utf-8.torrent')
+#     tracker = Tracker(torrent)
+#     loop = get_event_loop()
+#     response = loop.run_until_complete(tracker.connect(0, 0, True))
+#
+#     peers = response.peers
+#     port = 0
+#
+#     # According to Piazza, ip should be '128.8.126.63'
+#     for p in peers:
+#         if p[0] == '128.8.126.63':
+#             port = p[1]
+#             break
+#
+#     pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash, peer_id=tracker.peer_id.encode('utf-8'))
+#     loop.run_until_complete(pc.start())

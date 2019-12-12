@@ -1,6 +1,6 @@
 import math
 import os
-import time
+
 from client import REQUEST_LENGTH
 from data_model import Piece, Block
 
@@ -8,17 +8,12 @@ from data_model import Piece, Block
 class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
-        # self.peers = {}
         self.total_pieces_num = len(torrent.pieces)
 
         self.missing_pieces = self.initiate_all_pieces()
         self.downloading_piece = None
         self.completed_pieces = []
         self.fd = os.open(self.torrent.output_file(), os.O_RDWR | os.O_CREAT)
-
-        # self.downloading_blocks = []
-
-        # self.queue = []
 
     def initiate_all_pieces(self):
         pieces = []

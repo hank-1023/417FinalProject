@@ -1,4 +1,3 @@
-import logging
 from _sha1 import sha1
 
 
@@ -44,17 +43,6 @@ class Piece:
     def is_hash_matching(self):
         piece_hash = sha1(self.concat_blocks()).digest()
         return self.hash_value == piece_hash
-
-
-    # def received(self, offset: int, data: bytes):
-    #     exist = 0
-    #     for block in self.blocks:
-    #         if block.offset == offset:
-    #             block.status = Block.Completed
-    #             block.data = data
-    #             exist = 1
-    #     if exist == 0:
-    #         logging.warning('Trying to complete a non-existing block {offset}'.format(offset=offset))
 
 
 
