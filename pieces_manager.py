@@ -12,7 +12,7 @@ class PiecesManager:
 
         self.missing_pieces = self.initiate_all_pieces()
         self.downloading_piece = None
-        self.completed_pieces = {int: Piece}
+        self.completed_pieces = []
 
         self.fd = os.open(self.torrent.output_file, os.O_RDWR | os.O_CREAT)
 
@@ -66,7 +66,7 @@ class PiecesManager:
         if piece.is_complete():
             if piece.is_hash_matching():
                 self.downloading_piece = None
-                self.completed_pieces[piece_index] = piece
+                self.completed_pieces.insert(piece_index, piece)
                 self.write_piece(piece)
 
                 print("Piece " + str(piece_index) + " Completed")
