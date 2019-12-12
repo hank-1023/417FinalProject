@@ -82,7 +82,7 @@ class Tracker:
 
 
 if __name__ == '__main__':
-    torrent = Torrent('torrents/1184-0.txt.torrent')
+    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
     tracker = Tracker(torrent)
     loop = get_event_loop()
     response = loop.run_until_complete(tracker.connect(0, 0, True))
@@ -91,12 +91,17 @@ if __name__ == '__main__':
     peers = response.peers
     port = 0
 
+    pieces_manager = PiecesManager(torrent)
+
     # According to Piazza, ip should be '128.8.126.63'
     for p in peers:
-        if p[0] == '128.8.126.63':
-            port = p[1]
-            break
-    pieces_manager = PiecesManager(torrent)
-    pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash,
-                        peer_id=tracker.peer_id.encode('utf-8'), pieces_manager=pieces_manager, )
-    loop.run_until_complete(pc.start())
+        print(p)
+        try:
+            pieces_manager = PiecesManager(torrent)
+            pc = PeerConnection(ip=p[0], port=p[1], info_hash=torrent.info_hash,
+                                peer_id=tracker.peer_id.encode('utf-8'), pieces_manager=pieces_manager, )
+            loop.run_until_complete(pc.start())
+        except TimeoutError:
+            pass
+        except ConnectionRefusedError:
+            pass

@@ -94,10 +94,11 @@ class PiecesManager:
         if not block:
             block = self.push_next(peer_id)
             if not block:
-                if self.find_next(peer_id):
+                try:
                     block = self.find_next(peer_id).next()
-                else:
-                    return None
+                    return block
+                except AttributeError:
+                    pass
         return block
 
     def current_pending(self, peer_id):
