@@ -2,9 +2,9 @@ import asyncio
 import logging
 import time
 from asyncio import Queue, CancelledError
-from PiecesManager import *
+from pieces_manager import *
 from bencoding import Decoder
-from connection_proto import *
+from peer_connection import *
 from tracker import Tracker
 from torrent import Torrent
 

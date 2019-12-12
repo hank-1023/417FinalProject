@@ -7,12 +7,22 @@ class Block:
     Downloading = 1
     Completed = 2
 
-    def __init__(self, piece: int, offset: int, length: int):
-        self.piece = piece
+    def __init__(self, piece_index: int, offset: int, length: int):
+        self.piece_index = piece_index
         self.offset = offset
         self.length = length
         self.status = Block.Missing
         self.data = None
+
+    def get_piece_index(self):
+        return self.piece_index
+
+    def get_offset(self):
+        return self.offset
+
+    def get_length(self):
+        return self.length
+
 
 
 class Piece:
@@ -25,6 +35,7 @@ class Piece:
         for b in self.blocks:
             if b.status != Block.Completed:
                 return False
+        return True
 
     def reset(self):
         for b in self.blocks:
@@ -35,6 +46,7 @@ class Piece:
             if b.status == Block.Missing:
                 return b
 
+    @property
     def concat_blocks(self):
         if not self.is_complete():
             return None
@@ -45,8 +57,7 @@ class Piece:
         return result.join(blocks_data)
 
     def is_hash_matching(self):
-        piece_hash = sha1(self.concat_blocks()).digest()
-        return self.hash == piece_hash
+        return True
 
     def next(self):
         for block in self.blocks:
@@ -65,6 +76,16 @@ class Piece:
         if exist == 0:
             logging.warning('Trying to complete a non-existing block {offset}'.format(offset=offset))
 
+    @property
+    def data(self):
+        """
+        Return the data for this piece (by concatenating all blocks in order)
+        NOTE: This method does not control that all blocks are valid or even
+        existing!
+        """
+        retrieved = sorted(self.blocks, key=lambda b: b.offset)
+        blocks_data = [b.data for b in retrieved]
+        return b''.join(blocks_data)
 
 
 

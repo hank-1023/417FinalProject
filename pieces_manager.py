@@ -1,4 +1,5 @@
 import math
+import os
 import time
 from DataModel import *
 from client import REQUEST_LENGTH
@@ -8,11 +9,12 @@ class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
+        self.total_pieces_num = len(torrent.pieces)
         self.missing_list = self.initiate_blocks()
-        # self.sending_list = []
+        self.sending_list = []
         self.queue = []
         self.have_pieces = []
-        self.total_pieces_num = len(torrent.pieces)
+        self.fd = os.open(self.torrent.output_file, os.O_RDWR | os.O_CREAT)
 
     def initiate_blocks(self):
         pieces = []
@@ -40,6 +42,13 @@ class PiecesManager:
 
         return pieces
 
+    def close(self):
+        if self.fd:
+            os.close(self.fd)
+
+    def pieces_num(self):
+        return self.have_pieces
+
     def completed(self):
         return len(self.have_pieces) == self.total_pieces_num
 
@@ -52,9 +61,9 @@ class PiecesManager:
         return len(self.have_pieces) * self.torrent.piece_length
 
     def event_block_received(self, peer_id, index, offset, data):
-        for piece in self.sending_list:
-            if piece.block[1].index == index & piece.block[1].offset == offset:
-                self.sending_list.remove(piece)
+        for block in self.sending_list:
+            if (block[0].piece_index == index) & (block[0].offset == offset):
+                self.sending_list.remove(block)
                 break
 
         for piece in self.queue:
@@ -62,8 +71,9 @@ class PiecesManager:
                 piece.received(offset, data)
                 if piece.is_complete():
                     if piece.is_hash_matching():
-                        self.queue.remove(piece)
+                        self._write(piece)
                         self.have_pieces.append(piece)
+                        self.queue.remove(piece)
                         downloaded = self.total_pieces_num - len(self.missing_list) - len(self.queue)
                     else:
                         print("wrong piece")
@@ -84,24 +94,28 @@ class PiecesManager:
         if not block:
             block = self.push_next(peer_id)
             if not block:
-                self.find_next(peer_id).new_request()
-
+                if self.find_next(peer_id):
+                    block = self.find_next(peer_id).next()
+                else:
+                    return None
         return block
 
     def current_pending(self, peer_id):
         current = int(round(time.time() * 1000))
         for blocks in self.sending_list:
-            if blocks[2] + 300*1000 > current:
-                blocks[2] = current
-                return blocks[1]
+            if blocks[1] + 300*1000 > current:
+                block = (blocks[0], current)
+                self.sending_list.remove(blocks)
+                self.sending_list.append(block)
+                return blocks[0]
         return None
 
     def push_next(self, peer_id):
         for pieces in self.queue:
-            if self.peers[peer_id][pieces.index] == 1:
+            if self.peers[peer_id][pieces.index]:
                 block = pieces.next()
                 if block:
-                    self.queue.append((block, int(round(time.time() * 1000))))
+                    self.sending_list.append((block, int(round(time.time() * 1000))))
                     return block
 
         return None
@@ -113,6 +127,12 @@ class PiecesManager:
             return pieces
         return None
 
-
+    def _write(self, piece):
+        """
+        Write the given piece to disk
+        """
+        pos = piece.index * self.torrent.piece_length
+        os.lseek(self.fd, pos, os.SEEK_SET)
+        os.write(self.fd, piece.data)
 
 

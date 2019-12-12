@@ -55,6 +55,9 @@ class Torrent:
     def info(self):
         print(self.meta['info']['piece length'])
 
+    @property
+    def output_file(self):
+        return self.meta['info']['name']
 
 if __name__ == '__main__':
     torrent = Torrent('torrents/1056.txt.utf-8.torrent')

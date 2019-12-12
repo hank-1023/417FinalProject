@@ -7,6 +7,7 @@ import aiohttp
 from urllib.parse import urlencode
 from peer_connection import *
 from torrent import Torrent
+from pieces_manager import *
 
 
 class TrackerResponse:
@@ -86,6 +87,7 @@ if __name__ == '__main__':
     loop = get_event_loop()
     response = loop.run_until_complete(tracker.connect(0, 0, True))
 
+    print(len(torrent.pieces))
     peers = response.peers
     port = 0
 
@@ -94,6 +96,7 @@ if __name__ == '__main__':
         if p[0] == '128.8.126.63':
             port = p[1]
             break
-
-    pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash, peer_id=tracker.peer_id.encode('utf-8'))
+    pieces_manager = PiecesManager(torrent)
+    pc = PeerConnection(ip='128.8.126.63', port=port, info_hash=torrent.info_hash,
+                        peer_id=tracker.peer_id.encode('utf-8'), pieces_manager=pieces_manager, )
     loop.run_until_complete(pc.start())
