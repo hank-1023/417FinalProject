@@ -1,22 +1,24 @@
 import math
+import os
 import time
-from data_model import *
 from client import REQUEST_LENGTH
-from peer_connection import PeerState
+from data_model import Piece, Block
+
 
 class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
-        self.peers = {}
+        # self.peers = {}
         self.total_pieces_num = len(torrent.pieces)
 
         self.missing_pieces = self.initiate_all_pieces()
-        self.downloading_pieces = {int: Piece}
-        self.completed_pieces = {int: Piece}
+        self.downloading_piece = None
+        self.completed_pieces = []
+        self.fd = os.open(self.torrent.output_file(), os.O_RDWR | os.O_CREAT)
 
         # self.downloading_blocks = []
 
-        self.queue = []
+        # self.queue = []
 
     def initiate_all_pieces(self):
         pieces = []
@@ -45,33 +47,44 @@ class PiecesManager:
         return pieces
 
     def is_download_completed(self):
-        return len(self.completed_pieces) == self.total_pieces_num
+        result = len(self.completed_pieces) == self.total_pieces_num
+        if result:
+            os.close(self.fd)
+            print("Download is completed")
+        return result
 
     @staticmethod
     def bytes_uploaded():
-        upload = 0
-        return upload == 0
+        return 0
 
     def bytes_downloaded(self):
         return len(self.completed_pieces) * self.torrent.piece_length
 
-    def event_block_received(self, peer_id, piece_index, block_offset, data):
-        if piece_index in self.downloading_pieces.keys():
-            piece = self.downloading_pieces[piece_index]
+    def event_block_received(self, piece_index, block_offset, data):
+        piece = self.downloading_piece
+        if piece:
             self.add_block_to_piece(block_offset, data, piece)
-
-            if piece.is_complete():
-                if piece.is_hash_matching():
-                    # self.write
-                    self.downloading_pieces.pop(piece_index)
-                    self.completed_pieces[piece_index] = piece
-                else:
-                    # reset the piece's blocks to all missing
-                    piece.reset()
         else:
-            raise Exception("Piece not found in downloading")
+            raise Exception("Piece not set for downloading")
+
+        if piece.is_complete():
+            if piece.is_hash_matching():
+                self.downloading_piece = None
+                self.completed_pieces.insert(piece_index, piece)
+                self.write_piece(piece)
+
+                print("Piece " + str(piece_index) + " Completed")
+            else:
+                # reset the piece's blocks to all missing
+                piece.reset()
 
 
+    def get_next_block(self) -> Block:
+        if not self.downloading_piece:
+            self.downloading_piece = self.missing_pieces.pop(0)
+        block = self.downloading_piece.get_next_block()
+        block.status = Block.DOWNLOADING
+        return block
 
         # for piece in self.downloading_blocks:
         #     if piece.block[1].index == p_index & piece.block[1].offset == b_offset:
@@ -94,55 +107,61 @@ class PiecesManager:
         block_exist = False
         for block in piece.blocks:
             if block.offset == block_offset:
-                block.status = Block.Completed
+                block.status = Block.COMPLETED
                 block.data = block_data
                 block_exist = True
+                break
         if not block_exist:
             raise Exception("Write to blocks not existed")
 
-    def add_peers(self, peer_id, pieces):
-        self.peers[peer_id] = pieces
+    def write_piece(self, piece):
+        position = piece.index * self.torrent.piece_length
+        os.lseek(self.fd, position, os.SEEK_SET)
+        os.write(self.fd, piece.concat_blocks())
 
-    def update_peers(self, peer_id, index):
-        if peer_id in self.peers:
-            self.peers[peer_id][index] = 1
+    # def add_peers(self, peer_id, pieces):
+    #     self.peers[peer_id] = pieces
+    #
+    # def update_peers(self, peer_id, index):
+    #     if peer_id in self.peers:
+    #         self.peers[peer_id][index] = 1
 
-    def next_request(self,peer_id):
-        if peer_id not in self.peers:
-            return None
+    # def next_request(self,peer_id):
+    #     if peer_id not in self.peers:
+    #         return None
+    #
+    #     block = self.current_pending(peer_id)
+    #     if not block:
+    #         block = self.push_next(peer_id)
+    #         if not block:
+    #             self.find_next(peer_id).new_request()
+    #
+    #     return block
 
-        block = self.current_pending(peer_id)
-        if not block:
-            block = self.push_next(peer_id)
-            if not block:
-                self.find_next(peer_id).new_request()
+    # def current_pending(self, peer_id):
+    #     current = int(round(time.time() * 1000))
+    #     for blocks in self.sending_list:
+    #         if blocks[2] + 300*1000 > current:
+    #             blocks[2] = current
+    #             return blocks[1]
+    #     return None
 
-        return block
-
-    def current_pending(self, peer_id):
-        current = int(round(time.time() * 1000))
-        for blocks in self.sending_list:
-            if blocks[2] + 300*1000 > current:
-                blocks[2] = current
-                return blocks[1]
-        return None
-
-    def push_next(self, peer_id):
-        for pieces in self.queue:
-            if self.peers[peer_id][pieces.index] == 1:
-                block = pieces.next()
-                if block:
-                    self.queue.append((block, int(round(time.time() * 1000))))
-                    return block
-
-        return None
-
-    def find_next(self, peer_id):
-        for pieces in self.missing_pieces:
-            self.missing_pieces.remove(pieces)
-            self.queue.append(pieces)
-            return pieces
-        return None
+    # def push_next(self, peer_id):
+    #     for pieces in self.queue:
+    #         if self.peers[peer_id][pieces.index] == 1:
+    #             block = pieces.next()
+    #             if block:
+    #                 self.queue.append((block, int(round(time.time() * 1000))))
+    #                 return block
+    #
+    #     return None
+    #
+    # def find_next(self, peer_id):
+    #     for pieces in self.missing_pieces:
+    #         self.missing_pieces.remove(pieces)
+    #         self.queue.append(pieces)
+    #         return pieces
+    #     return None
 
 
 

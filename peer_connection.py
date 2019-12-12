@@ -1,10 +1,7 @@
 import asyncio
 import logging
-
+import struct
 import bitstring as bitstring
-
-from data_model import Piece
-from tracker import *
 from asyncio import Queue, StreamReader
 
 
@@ -25,7 +22,7 @@ class PeerState:
 class PeerConnection:
 
     def __init__(self, ip: str, port: int, info_hash,
-                 peer_id, block_callback=None):
+                 peer_id, piece_manager, block_callback=None):
         self.peer = Peer(ip, port)
         self.state = PeerState()
         # self.peer_state = []
@@ -36,7 +33,8 @@ class PeerConnection:
         self.writer = None
         self.reader = None
         self.request_sent = False
-        self.on_block_cb = block_callback
+        self.piece_manager = piece_manager
+        # self.on_block_cb = block_callback
         # self.future = asyncio.ensure_future(self.start())
 
         self.stop_connection = False
@@ -51,42 +49,47 @@ class PeerConnection:
         await self.send_interested()
         self.state.peer_interested = True
 
-        while not self.stop_connection:
-            async for peer_message in PeerDataIterator(self.reader, buffer):
-                message_len = peer_message.message_len
-                message_id = peer_message.message_id
-                print("Received message: " + str(message_id))
+        async for peer_message in PeerDataIterator(self.reader, buffer):
+            message_len = peer_message.message_len
+            message_id = peer_message.message_id
+            print("Received message: " + str(message_id))
 
-                payload = peer_message.payload
+            payload = peer_message.payload
 
-                if message_id == 0:
-                    continue
-                elif message_id == 1: # peer unchock
-                    self.state.peer_chocking = False
-                elif message_id == 2:  # peer interested
-                    self.state.peer_interested = True
-                elif message_id == 3:  # peer not interested
-                    self.state.peer_interested = False
-                elif message_id == 4:  # Have
-                    have_index = struct.unpack('>I', payload)[0]
-                    self.peer.has_pieces.append(have_index)
-                elif message_id == 5:  # bitfield
-                    bitfield = struct.unpack('>' + str(message_len - 1) + 's', payload)[0]
-                    b = bitstring.BitArray(bytes=bitfield)
-                elif message_id == 6:
-                    pass
-                elif message_id == 7:  # piece
-                    data = struct.unpack('>II' + str(message_len - 9) + 's', payload[:message_len + 4])
-                    index = data[0]
-                    offset = data[1]
-                    block = data[2]
+            if message_id == 0:
+                continue
+            elif message_id == 1: # peer unchock
+                self.state.peer_chocking = False
+            elif message_id == 2:  # peer interested
+                self.state.peer_interested = True
+            elif message_id == 3:  # peer not interested
+                self.state.peer_interested = False
+            elif message_id == 4:  # Have
+                have_index = struct.unpack('>I', payload)[0]
+                self.peer.has_pieces.append(have_index)
+            elif message_id == 5:  # bitfield
+                bitfield = struct.unpack('>' + str(message_len - 1) + 's', payload)[0]
+                b = bitstring.BitArray(bytes=bitfield)
+            elif message_id == 6:
+                pass
+            elif message_id == 7:  # piece
+                data = struct.unpack('>II' + str(message_len - 9) + 's', payload[:message_len + 4])
+                index = data[0]
+                offset = data[1]
+                block = data[2]
 
-                    print("got piece: " + block.decode('utf-8'))
-                elif message_id == 8:  # cancel
-                    pass
+                # Can send the next request now
+                self.request_sent = False
+                # Call to piece manager to process block
+                self.piece_manager.event_block_received(index, offset, block)
 
-                if not self.state.peer_chocking and not self.request_sent:
-                    await self.send_request()
+            elif message_id == 8:  # cancel
+                pass
+
+            if self.piece_manager.is_download_completed():
+                break
+            if not self.state.peer_chocking and not self.request_sent:
+                await self.send_request()
 
 
 
@@ -100,7 +103,7 @@ class PeerConnection:
             19,
             b'BitTorrent protocol',
             self.info_hash,
-            self.peer_id)
+            self.peer_id.encode('utf-8'))
         hand_shake_length = 68
 
         # send handshake message to peer
@@ -138,12 +141,14 @@ class PeerConnection:
         await self.writer.drain()
 
     async def send_request(self):
+        next_block = self.piece_manager.get_next_block()
+
         message = struct.pack('>IbIII',
                               13,
                               6,
-                              0,
-                              0,
-                              2 ** 14)
+                              next_block.piece_index,
+                              next_block.offset,
+                              next_block.length)
         self.writer.write(message)
         await self.writer.drain()
 
