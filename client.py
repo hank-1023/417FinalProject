@@ -54,7 +54,7 @@ class TorrentClient:
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    client = TorrentClient('torrents/1184-0.txt.torrent')
+    client = TorrentClient('torrents/1056.txt.utf-8.torrent')
     task = loop.create_task(client.start())
     try:
         loop.run_until_complete(task)
