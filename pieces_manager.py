@@ -1,20 +1,24 @@
 import math
 import time
-from DataModel import *
+from data_model import *
 from client import REQUEST_LENGTH
-
+from peer_connection import PeerState
 
 class PiecesManager:
     def __init__(self, torrent):
         self.torrent = torrent
         self.peers = {}
-        self.missing_list = self.initiate_blocks()
-        # self.sending_list = []
-        self.queue = []
-        self.have_pieces = []
         self.total_pieces_num = len(torrent.pieces)
 
-    def initiate_blocks(self):
+        self.missing_pieces = self.initiate_all_pieces()
+        self.downloading_pieces = {int: Piece}
+        self.completed_pieces = {int: Piece}
+
+        # self.downloading_blocks = []
+
+        self.queue = []
+
+    def initiate_all_pieces(self):
         pieces = []
         for index, piece_hash in enumerate(self.torrent.pieces):
             if index != self.total_pieces_num - 1:
@@ -40,8 +44,8 @@ class PiecesManager:
 
         return pieces
 
-    def completed(self):
-        return len(self.have_pieces) == self.total_pieces_num
+    def is_download_completed(self):
+        return len(self.completed_pieces) == self.total_pieces_num
 
     @staticmethod
     def bytes_uploaded():
@@ -49,25 +53,52 @@ class PiecesManager:
         return upload == 0
 
     def bytes_downloaded(self):
-        return len(self.have_pieces) * self.torrent.piece_length
+        return len(self.completed_pieces) * self.torrent.piece_length
 
-    def event_block_received(self, peer_id, index, offset, data):
-        for piece in self.sending_list:
-            if piece.block[1].index == index & piece.block[1].offset == offset:
-                self.sending_list.remove(piece)
-                break
+    def event_block_received(self, peer_id, piece_index, block_offset, data):
+        if piece_index in self.downloading_pieces.keys():
+            piece = self.downloading_pieces[piece_index]
+            self.add_block_to_piece(block_offset, data, piece)
 
-        for piece in self.queue:
-            if piece.index == index:
-                piece.received(offset, data)
-                if piece.is_complete():
-                    if piece.is_hash_matching():
-                        self.queue.remove(piece)
-                        self.have_pieces.append(piece)
-                        downloaded = self.total_pieces_num - len(self.missing_list) - len(self.queue)
-                    else:
-                        print("wrong piece")
-                        piece.reset()
+            if piece.is_complete():
+                if piece.is_hash_matching():
+                    # self.write
+                    self.downloading_pieces.pop(piece_index)
+                    self.completed_pieces[piece_index] = piece
+                else:
+                    # reset the piece's blocks to all missing
+                    piece.reset()
+        else:
+            raise Exception("Piece not found in downloading")
+
+
+
+        # for piece in self.downloading_blocks:
+        #     if piece.block[1].index == p_index & piece.block[1].offset == b_offset:
+        #         self.downloading_blocks.remove(piece)
+        #         break
+        #
+        # for piece in self.queue:
+        #     if piece.index == p_index:
+        #         piece.received(b_offset, data)
+        #         if piece.is_complete():
+        #             if piece.is_hash_matching():
+        #                 self.queue.remove(piece)
+        #                 self.completed_pieces.append(piece)
+        #                 downloaded = self.total_pieces_num - len(self.missing_pieces) - len(self.queue)
+        #             else:
+        #                 print("wrong piece")
+        #                 piece.reset()
+
+    def add_block_to_piece(self, block_offset, block_data, piece):
+        block_exist = False
+        for block in piece.blocks:
+            if block.offset == block_offset:
+                block.status = Block.Completed
+                block.data = block_data
+                block_exist = True
+        if not block_exist:
+            raise Exception("Write to blocks not existed")
 
     def add_peers(self, peer_id, pieces):
         self.peers[peer_id] = pieces
@@ -107,8 +138,8 @@ class PiecesManager:
         return None
 
     def find_next(self, peer_id):
-        for pieces in self.missing_list:
-            self.missing_list.remove(pieces)
+        for pieces in self.missing_pieces:
+            self.missing_pieces.remove(pieces)
             self.queue.append(pieces)
             return pieces
         return None

@@ -81,7 +81,7 @@ class Tracker:
 
 
 if __name__ == '__main__':
-    torrent = Torrent('torrents/1184-0.txt.torrent')
+    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
     tracker = Tracker(torrent)
     loop = get_event_loop()
     response = loop.run_until_complete(tracker.connect(0, 0, True))

@@ -2,9 +2,9 @@ import asyncio
 import logging
 import time
 from asyncio import Queue, CancelledError
-from PiecesManager import *
 from bencoding import Decoder
-from connection_proto import *
+from peer_connection import PeerConnection
+from pieces_manager import *
 from tracker import Tracker
 from torrent import Torrent
 
@@ -32,7 +32,7 @@ class TorrentClient:
         while True:
             if self.user_canceled:
                 break
-            if self.pieces_manager.completed():
+            if self.pieces_manager.is_download_completed():
                 print("File Download Complete")
                 break
 

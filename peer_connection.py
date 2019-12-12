@@ -1,93 +1,94 @@
 import asyncio
 import logging
+
+import bitstring as bitstring
+
+from data_model import Piece
 from tracker import *
-from asyncio import Queue
-
-CHUNK_SIZE = 10240
+from asyncio import Queue, StreamReader
 
 
-class PeerConnection:
-    def __init__(self, ip: str, port: int, info_hash,
-                 peer_id, block_callback=None):
+class Peer:
+    def __init__(self, ip: str, port: int):
         self.ip = ip
         self.port = port
-        self.my_state = []
-        self.peer_state = []
+        self.state = PeerState()
+        self.has_pieces = []
+
+class PeerState:
+    def __init__(self):
+        self.am_choking = True  # client is choking this peer
+        self.am_interested = False  # client is interested in this peer
+        self.peer_chocking = True  # peer is choking this client
+        self.peer_interested = False # peer is interested in this client
+
+class PeerConnection:
+
+    def __init__(self, ip: str, port: int, info_hash,
+                 peer_id, block_callback=None):
+        self.peer = Peer(ip, port)
+        self.state = PeerState()
+        # self.peer_state = []
         # self.queue = queue
         self.info_hash = info_hash
         self.peer_id = peer_id
         self.remote_id = None
         self.writer = None
         self.reader = None
+        self.request_sent = False
         self.on_block_cb = block_callback
         # self.future = asyncio.ensure_future(self.start())
 
         self.stop_connection = False
 
     async def start(self):
-        ip, port = self.ip, self.port
-        logging.info('Got assigned peer with: {ip}'.format(ip=ip))
+        ip, port = self.peer.ip, self.peer.port
+        print('PeerConnection Got assigned peer with: {ip}'.format(ip=ip))
 
         self.reader, self.writer = await asyncio.open_connection(ip, port)
-        handshake_data = await self.initiate_handshake()
+        buffer = await self.initiate_handshake()
 
-        self.my_state.append("choked")
         await self.send_interested()
-        self.peer_state.append("interested")
+        self.state.peer_interested = True
 
         while not self.stop_connection:
-            recv = await self.reader.read(CHUNK_SIZE)
-            new_buff = handshake_data + recv
-            print(new_buff)
-            try:
-                message_length = struct.unpack('>I', recv[:4])[0]
-                # Choke
-                if message_length == 0:
-                    # alive
+            async for peer_message in PeerDataIterator(self.reader, buffer):
+                message_len = peer_message.message_len
+                message_id = peer_message.message_id
+                print("Received message: " + str(message_id))
+
+                payload = peer_message.payload
+
+                if message_id == 0:
+                    continue
+                elif message_id == 1: # peer unchock
+                    self.state.peer_chocking = False
+                elif message_id == 2:  # peer interested
+                    self.state.peer_interested = True
+                elif message_id == 3:  # peer not interested
+                    self.state.peer_interested = False
+                elif message_id == 4:  # Have
+                    have_index = struct.unpack('>I', payload)[0]
+                    self.peer.has_pieces.append(have_index)
+                elif message_id == 5:  # bitfield
+                    bitfield = struct.unpack('>' + str(message_len - 1) + 's', payload)[0]
+                    b = bitstring.BitArray(bytes=bitfield)
+                elif message_id == 6:
                     pass
-                if message_length > 0:
-                    message_id = struct.unpack('>b', recv[4:5])[0]
-                    if message_id == 0:
-                        # chock
-                        self.my_state.append("choked")
-                    elif message_id == 1:
-                        if 'choked' in self.my_state:
-                            self.my_state.remove('choked')
-                    elif message_id == 2:
-                        # interested
-                        self.peer_state.append("interested")
-                    elif message_id == 3:
-                        # not interested
-                        if 'interested' in self.peer_state:
-                            self.peer_state.remove('interested')
-                    elif message_id == 4:
-                        # have
-                        pass
-                    elif message_id == 5:
-                        # bitfield
-                        pass
-                    elif message_id == 6:
-                        # request
-                        pass
-                    elif message_id == 7:
-                        parts = struct.unpack('>IbII' + str(message_length - 9) + 's', recv)
-                        print(parts)
-                        self.my_state.remove('pending_request')
-                        pass
-                    elif message_id == 8:
-                        # cancel
-                        pass
-                    elif message_id == 9:
-                        # port
-                        pass
-                    if 'choked' not in self.my_state:
-                        if 'interested' in self.peer_state:
-                            if 'pending_request' not in self.my_state:
-                                self.my_state.append('pending_request')
-                                await self.send_request()
-            except Exception as e:
-                logging.exception('An error occurred')
-                raise e
+                elif message_id == 7:  # piece
+                    data = struct.unpack('>II' + str(message_len - 9) + 's', payload[:message_len + 4])
+                    index = data[0]
+                    offset = data[1]
+                    block = data[2]
+
+                    print("got piece: " + block.decode('utf-8'))
+                elif message_id == 8:  # cancel
+                    pass
+
+                if not self.state.peer_chocking and not self.request_sent:
+                    await self.send_request()
+
+
 
     def parse_message(self, message):
         return
@@ -132,6 +133,7 @@ class PeerConnection:
                               1,  # Message length
                               2  # interested id
                               )
+        self.state.am_interested = True
         self.writer.write(message)
         await self.writer.drain()
 
@@ -149,5 +151,55 @@ class PeerConnection:
 
 class ProtocolError(BaseException):
     pass
+
+class PeerMessage:
+    def __init__(self, message_len: int, message_id: int, payload: bytes=None):
+        self.message_len = message_len
+        self.message_id = message_id
+        self.payload = payload
+
+
+class PeerDataIterator:
+
+    HEADER_LENGTH = 4
+
+    def __init__(self, reader: StreamReader, buffer):
+        self.reader = reader
+        self.buffer = buffer
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        while True:
+            try:
+                data = await self.reader.read(5)
+                message_length = struct.unpack('>I', data[0:4])[0]
+                data += await self.reader.read(message_length-1)
+                if data:
+                    self.buffer += data
+                    message = self.parse_buffer()
+                    if message:
+                        return message
+            except Exception:
+                raise StopAsyncIteration()
+
+    def consume_buffer(self, length):
+        self.buffer = self.buffer[self.HEADER_LENGTH + length:]
+
+    def parse_buffer(self):
+        if len(self.buffer) < self.HEADER_LENGTH:
+            return None
+        else:
+            message_length = struct.unpack('>I', self.buffer[0:4])[0]
+
+            if message_length == 0:
+                return PeerMessage(message_length, 0)
+            elif len(self.buffer) > message_length:
+                message_id = struct.unpack('>b', self.buffer[4:5])[0]
+                payload = self.buffer[5: 5 + message_length - 1]
+                self.consume_buffer(message_length)
+                return PeerMessage(message_length, message_id, payload)
+
 
 
