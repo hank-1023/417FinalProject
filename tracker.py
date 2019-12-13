@@ -30,7 +30,7 @@ class Tracker:
             'peer_id': self.peer_id,
             'uploaded': uploaded,
             'downloaded': downloaded,
-            'left': self.torrent.total_length,
+            'left': self.torrent.length_to_download,
             # port should be between 6881-6889
             'port': 6889,
             'compact': 1
@@ -82,7 +82,7 @@ class Tracker:
 
 
 if __name__ == '__main__':
-    torrent = Torrent('torrents/1056.txt.utf-8.torrent')
+    torrent = Torrent('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
     tracker = Tracker(torrent)
     loop = get_event_loop()
     response = loop.run_until_complete(tracker.connect(0, 0, True))
@@ -92,12 +92,12 @@ if __name__ == '__main__':
     port = 1
 
     pieces_manager = PiecesManager(torrent)
-
-    # According to Piazza, ip should be '128.8.126.63'
     for p in peers:
         print(p)
+    for p in peers:
+        if p[0] != '128.8.126.63':
+            continue
         try:
-            pieces_manager = PiecesManager(torrent)
             pc = PeerConnection(ip=p[0], port=p[1], info_hash=torrent.info_hash,
                                 peer_id=tracker.peer_id.encode('utf-8'), pieces_manager=pieces_manager, )
             loop.run_until_complete(pc.start())

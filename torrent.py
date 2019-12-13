@@ -17,10 +17,15 @@ class Torrent:
         self.files = []
         self.base_url = None
         self.info_hash = None
-        self.total_length = 0
+        self.total_length = []
+        self.parse_meta(self.meta)
+        count = 0
+        for length in self.total_length:
+            count += length
+
+        self.length_to_download = count
 
         # add more fields while parsing the dictionary
-        self.parse_meta(self.meta)
 
     def parse_meta(self, meta):
         self.base_url = meta['announce']
@@ -34,11 +39,11 @@ class Torrent:
             for item in info_dict['files']:
                 f = DownloadFileInfo(None, item['length'], item['path'])
                 self.files.append(f)
-                self.total_length += item['length']
+                self.total_length.append(item['length'])
         else:
             f = DownloadFileInfo(info_dict['name'], info_dict['length'])
             self.files.append(f)
-            self.total_length = info_dict['length']
+            self.total_length.append(info_dict['length'])
 
     @property
     def pieces(self):
@@ -57,7 +62,13 @@ class Torrent:
 
     @property
     def output_file(self):
-        return self.meta['info']['name']
+        output_file_list = []
+        if self.multi_file:
+            for files in self.meta['info']['files']:
+                output_file_list.append(files['path'])
+        else:
+            output_file_list.append(self.meta['info']['name'])
+        return output_file_list
 
 if __name__ == '__main__':
     torrent = Torrent('torrents/1056.txt.utf-8.torrent')

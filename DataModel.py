@@ -46,6 +46,12 @@ class Piece:
             if b.status == Block.Missing:
                 return b
 
+    def piece_total_length(self):
+        length = 0
+        for block in self.blocks:
+            length += block.length
+        return length
+
     @property
     def concat_blocks(self):
         if not self.is_complete():
@@ -85,7 +91,8 @@ class Piece:
         """
         retrieved = sorted(self.blocks, key=lambda b: b.offset)
         blocks_data = [b.data for b in retrieved]
-        return b''.join(blocks_data)
+        result = b''.join(blocks_data)
+        return result
 
 
 

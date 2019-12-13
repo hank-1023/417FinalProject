@@ -1,7 +1,13 @@
 import asyncio
 import logging
 import time
+from threading import Thread
 from asyncio import Queue, CancelledError
+from concurrent.futures.thread import ThreadPoolExecutor
+from multiprocessing import Process
+
+from async_timeout import timeout
+
 from pieces_manager import *
 from bencoding import Decoder
 from peer_connection import *
@@ -15,14 +21,11 @@ MAX_PEER_CONNECTIONS = 40
 class TorrentClient:
 
     def __init__(self, parse_torrent):
-        self.tracker = Tracker(parse_torrent)
+        self.torrent = Torrent(parse_torrent)
+        self.tracker = Tracker(self.torrent)
         self.pieces_manager = PiecesManager(Torrent(parse_torrent))
         self.available_peers = Queue()
-        self.peers = [PeerConnection(self.available_peers,
-                                     self.tracker.torrent.info_hash,
-                                     self.tracker.peer_id,
-                                     self.on_block_received)
-                      for _ in range(MAX_PEER_CONNECTIONS)]
+        self.peers = []
         self.user_canceled = False
 
     async def start(self):
@@ -35,43 +38,39 @@ class TorrentClient:
             if self.pieces_manager.completed():
                 print("File Download Complete")
                 break
+            tracker_response = await self.tracker.connect(self.pieces_manager.bytes_uploaded(),
+                                                          self.pieces_manager.bytes_downloaded(),
+                                                          True)
 
-            current_time = time.time()
-
-            if not previous_time or previous_time - current_time < interval:
-                tracker_response = await self.tracker.connect(self.pieces_manager.bytes_uploaded(),
-                                                              self.pieces_manager.bytes_downloaded(),
-                                                              previous_time is None)
-
-                if tracker_response:
-                    previous_time = current_time
-                    interval = tracker_response.interval
-                    self._empty_queue()
-                    for p in tracker_response.peers:
-                        self.available_peers.put_nowait(p)
+            if tracker_response:
+                self.peers = tracker_response.peers
+            print(self.peers)
+            for peer in self.peers:
+                if peer[0] != '128.8.126.63':
+                    continue
+                try:
+                    pc = PeerConnection(ip=peer[0], port=peer[1], info_hash=self.torrent.info_hash,
+                                             peer_id=self.tracker.peer_id.encode('utf-8'),
+                                             pieces_manager=self.pieces_manager, )
+                    await pc.start()
+                    if self.pieces_manager.completed():
+                        break
+                except TimeoutError:
+                    pass
+                except ConnectionRefusedError:
+                    pass
 
     def _empty_queue(self):
         while not self.available_peers.empty():
             self.available_peers.get_nowait()
 
-    def on_block_received(self, peer_id, piece_index, block_offset, data):
-        self.pieces_manager.event_block_received(peer_id, piece_index, block_offset, data)
 
-
-# if __name__ == '__main__':
-#     t = Tracker('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
-#     loop = asyncio.get_event_loop()
-#     response = loop.run_until_complete(t.connect(0, 0, True))
-#
-#     q = Queue()
-#     # Putting one address for testing
-#     print(response.peers[-1])
-#     q.put_nowait(response.peers[-1])
-#
-#     client = TorrentClient('torrents/1056.txt.utf-8.torrent')
-#     task = loop.create_task(client.start())
-#     try:
-#         # loop.run_until_complete(task)
-#         pass
-#     except CancelledError:
-#         logging.warning('Event loop was canceled')
+if __name__ == '__main__':
+    loop_client = asyncio.get_event_loop()
+    client = TorrentClient('torrents/deb-10.1.0-amd64-netinst.iso.torrent')
+    task = loop_client.create_task(client.start())
+    try:
+        loop_client.run_until_complete(task)
+        pass
+    except CancelledError:
+        pass

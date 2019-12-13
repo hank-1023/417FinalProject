@@ -3,6 +3,8 @@ import logging
 
 import bitstring as bitstring
 import cls as cls
+from async_timeout import timeout
+
 import pieces_manager
 
 from tracker import *
@@ -34,9 +36,18 @@ class PeerConnection:
     async def start(self):
         ip, port = self.ip, self.port
         logging.info('Got assigned peer with: {ip}'.format(ip=ip))
+        count = 10
+        try:
+            async with timeout(1):
+                print('Trying to connect ' + str(self.ip) + ' with port ' + str(self.port))
+                self.reader, self.writer = await asyncio.open_connection(ip, port)
+        except:
+            print('Connection to ' + str(self.ip) + ' with port ' + str(self.port) + ' failed.')
+            return
 
-        self.reader, self.writer = await asyncio.open_connection(ip, port)
+        print('Connection succeeded')
         handshake = await self.initiate_handshake()
+        print('Handshake sent')
         handshake_reset = handshake
 
         self.my_state.append("choked")
@@ -85,10 +96,12 @@ class PeerConnection:
                             handshake += recv
                         else:
                             parts = struct.unpack('>IbII' + str(message_length - 9) + 's', message)
-                            print(count)
                             count += 1
                             self.my_state.remove('pending_request')
                             self.piece_manager.event_block_received(self.remote_id, parts[2], parts[3], parts[4])
+                            print(parts)
+                            if self.piece_manager.current_queue():
+                                print("Downloaded Piece with index " + str(self.piece_manager.current_queue()))
                         pass
                     elif message_id == 8:
                         # cancel
@@ -96,10 +109,9 @@ class PeerConnection:
                     elif message_id == 9:
                         # port
                         pass
-                    if self.piece_manager.completed():
+                    if self.piece_manager.peer_completed(self.remote_id):
                         self.stop_connection = True
                         self.piece_manager.close()
-                        print(self.piece_manager.have_pieces)
                     else:
                         if message:
                             if 'choked' not in self.my_state:
@@ -111,10 +123,7 @@ class PeerConnection:
             except Exception as e:
                 logging.exception('An error occurred')
                 raise e
-            print(len(self.piece_manager.have_pieces))
-
-    async def parse_message(self, message):
-        pass
+        return True
 
     async def initiate_handshake(self):
         packed_bytes = struct.pack(
